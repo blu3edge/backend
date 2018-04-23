@@ -2,6 +2,10 @@
 //libreria para cifrar contrseñas(modulos)
 var bcrypt = require('bcrypt-nodejs');
 
+//file sistem, libreria para poder trabajar con sistema de ficheros
+var fs = require('fs');
+//accerder a rutas de nuestro sistema de archivos
+var path = require('path');
 //modelos
 var User = require('../models/user');
 
@@ -13,7 +17,8 @@ var jwt = require('../services/jwt');
 
 function pruebas(req, res){
 	res.status(200).send({
-		message: 'probando el controlador de usuarios y la acción'
+		message: 'probando el controlador de usuarios y la acción',
+		user: req.user
 	});
 }
 
@@ -32,6 +37,7 @@ user.nombre = params.nombre;
 user.apellido = params.apellido;
 user.email = params.email;
 user.rol = 'ROLE_USER';
+user.image = null;
 
 User.findOne({email: user.email.toLowerCase()}, (err, issetUser) => {
 	if(err){
@@ -97,39 +103,130 @@ User.findOne({email: user.email.toLowerCase()}, (err, issetUser) => {
 					}else{
 						res.status(200).send({user});
 					}
-					
+
 				}else{
 					res.status(404).send({
 						message: 'El usuario no a podido loguearse correctamente'
 					});
 				}
 			});
-			
+
 			}else{
 			res.status(404).send({
 			message: 'El usuario no existe'
 		});
-		
+
 		}
 	}
 });
 }
 		//actualizar usuarios registrados
-		
+
 		function updateUser(req, res){
-			res.status(200).send({
-				message: 'Actualizar usuario'
+			var userId = req.params.id;
+			var update = req.body;
+
+			if(userId != req.user.sub){
+				return res.status(500).send({message: 'No tienes permiso para actualizar el usuario'});
+			}
+			User.findByIdAndUpdate(userId, update, {new:true} ,(err, userUpdated) => {
+				if(err){
+					 res.status(500).send({
+						 message: 'Error al actualizar usuario'
+					 });
+				}else{
+					if(!userUpdated){
+						res.status(404).send({message: 'No se ha podido actualizar el usuario'});
+					}else{
+						res.status(200).send({user: userUpdated});
+					}
+				}
 			});
+				}
+//metodo para subir imagen de usuario
+function uploadImage(req, res){
+	var userId = req.params.id;
+	var file_name = 'no subido..';
 
+	if(req.files){
+		var file_path = req.files.image.path;
+		var file_split = file_path.split('\\');
+		var file_name = file_split[2];
+
+var ext_split = file_name.split('\.');
+var file_ext = ext_split[1];
+if(file_ext == 'png' || file_ext == 'jpg' || file_ext == 'jpeg' || file_ext == 'gif'){
+	if(userId != req.user.sub){
+		return res.status(500).send({message: 'No tienes permiso para actualizar el usuario'});
+	}
+	User.findByIdAndUpdate(userId, {image: file_name}, {new:true} ,(err, userUpdated) => {
+		if(err){
+			 res.status(500).send({
+				 message: 'Error al actualizar usuario'
+			 });
+		}else{
+			if(!userUpdated){
+				res.status(404).send({message: 'No se ha podido actualizar el usuario'});
+			}else{
+				res.status(200).send({user: userUpdated, image: file_name});
+			}
 		}
+	});
 
-	
+			}else{
+				//borrar archivo subido de formato no permitido
+				fs.unlink(file_path, (err) => {
+					if(err){
+							res.status(200).send({message: 'Formato de no permitido y no se borro archivo'});
+					}else{
+							res.status(200).send({message: 'Formato de no permitido'});
+					}
+				});
+
+			}
+
+}else{
+		res.status(200).send({message: 'No se han subido archivos'});
+	}
+}
+
+//metodo para retornar imagen del usuario
+
+function getImageFile(req, res){
+	var imageFile = req.params.imageFile;
+	var path_file = './uploads/users/'+imageFile;
+
+fs.exists(path_file, function(exists){
+	if(exists){
+		res.sendFile(path.resolve(path_file));
+	}else{
+		res.status(404).send({message: 'no existe imagen'});
+	}
+
+});
+}
+//listar administradores
+function getAdministradores(req, res){
+	User.find({role:'ROLE_ADMIN'}).exec((err, users) => {
+		if(err){
+			res.status(500).send({message: 'error en la petición'});
+		}else{
+			if(!users){
+				res.status(404).send({message: 'No hay administradores'});
+			}else{
+				res.status(200).send({users});
+			}
+		}
+	});
+}
+
 
 module.exports = {
 	pruebas,
 	saveUser,
 	login,
-	updateUser
-	
+	updateUser,
+	uploadImage,
+	getImageFile,
+	getAdministradores
 };
-
