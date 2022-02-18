@@ -7,6 +7,12 @@ var app = express();
 
 //cargar rutas
 var user_routes = require('./rutes/user');
+var producto_routes = require('./rutes/producto');
+var proveedor_routes = require('./rutes/proveedor');
+var movimiento_routes = require('./rutes/movimientos');
+var nota_routes = require('./rutes/notadeventa');
+var cliente_routes = require('./rutes/cliente');
+var Tarea_routes = require('./rutes/tarea');
 
 
 //middlerares de body-parser(funcion que se ejecuta lo primero de al hacer peticion http )
@@ -24,6 +30,12 @@ app.use((req, res, next) => {
 
 //rutas base
 app.use('/api', user_routes);
+app.use('/api', producto_routes);
+app.use('/api', proveedor_routes);
+app.use('/api', movimiento_routes);
+app.use('/api', nota_routes);
+app.use('/api', cliente_routes);
+app.use('/api', Tarea_routes);
 //rutas body-parser
 
 
