@@ -1,4 +1,4 @@
-'use strict'
+	'use strict'
 //libreria para cifrar contrseñas(modulos)
 var bcrypt = require('bcrypt-nodejs');
 
@@ -8,6 +8,7 @@ var fs = require('fs');
 var path = require('path');
 //modelos
 var User = require('../models/user');
+var moment = require('moment');
 
 //servicio jwt
 
@@ -29,15 +30,18 @@ function saveUser(req, res){
 //recojer el body ,parametros de la peticion
 var params = req.body;
 
-if(params.password && params.nombre && params.apellido && params.email){
+if(params.password && params.nombre && params.apellido && params.email && params.cargo && params.telefono){
 
 //asignar valores al objeto usuario
 
 user.nombre = params.nombre;
 user.apellido = params.apellido;
 user.email = params.email;
-user.rol = 'ROLE_USER';
+user.role = 'ROLE_USER';
 user.image = null;
+user.cargo = params.cargo;
+user.telefono = params.telefono;
+user.ultimaconexion = null;
 
 User.findOne({email: user.email.toLowerCase()}, (err, issetUser) => {
 	if(err){
@@ -85,6 +89,7 @@ User.findOne({email: user.email.toLowerCase()}, (err, issetUser) => {
 		var email = params.email;
 		var password = params.password;
 
+
 		User.findOne({email: email.toLowerCase()}, (err, user) => {
 	if(err){
 		res.status(500).send({message: 'Error al comprobar usuario'});
@@ -98,15 +103,16 @@ User.findOne({email: user.email.toLowerCase()}, (err, issetUser) => {
 						//devolver token jwt
 						res.status(200).send({
 							token: jwt.createToken(user)
+						
 						});
 
 					}else{
 						res.status(200).send({user});
-					}
+							}
 
 				}else{
 					res.status(404).send({
-						message: 'El usuario no a podido loguearse correctamente'
+						message: 'El usuario no a podido autenticarse correctamente'
 					});
 				}
 			});
@@ -125,10 +131,9 @@ User.findOne({email: user.email.toLowerCase()}, (err, issetUser) => {
 		function updateUser(req, res){
 			var userId = req.params.id;
 			var update = req.body;
+			delete update.password;
 
-			if(userId != req.user.sub){
-				return res.status(500).send({message: 'No tienes permiso para actualizar el usuario'});
-			}
+			
 			User.findByIdAndUpdate(userId, update, {new:true} ,(err, userUpdated) => {
 				if(err){
 					 res.status(500).send({
@@ -159,7 +164,7 @@ if(file_ext == 'png' || file_ext == 'jpg' || file_ext == 'jpeg' || file_ext == '
 	if(userId != req.user.sub){
 		return res.status(500).send({message: 'No tienes permiso para actualizar el usuario'});
 	}
-	User.findByIdAndUpdate(userId, {image: file_name}, {new:true} ,(err, userUpdated) => {
+	User.findByIdAndUpdate(userId, {image: file_name}, {new:true}, (err, userUpdated) => {
 		if(err){
 			 res.status(500).send({
 				 message: 'Error al actualizar usuario'
@@ -205,14 +210,14 @@ fs.exists(path_file, function(exists){
 
 });
 }
-//listar administradores
-function getAdministradores(req, res){
-	User.find({role:'ROLE_ADMIN'}).exec((err, users) => {
+//listar usuarios con rol usuario
+function getUsuarios(req, res){
+	User.find({role:'ROLE_USER'}).exec((err, users) => {
 		if(err){
 			res.status(500).send({message: 'error en la petición'});
 		}else{
 			if(!users){
-				res.status(404).send({message: 'No hay administradores'});
+				res.status(404).send({message: 'No hay Usuarios'});
 			}else{
 				res.status(200).send({users});
 			}
@@ -220,6 +225,52 @@ function getAdministradores(req, res){
 	});
 }
 
+//borrar usuarios
+function deleteUser(req, res){
+	var userId = req.params.id;
+		User.findByIdAndRemove(userId, (err, userRemoved) => {
+			if(err){
+				res.status(500).send({message: 'error en la petición'});
+			}else{
+				if(!userRemoved){
+					res.status(404).send({message: 'No se a podido borrar usuario'});
+				}else{
+					res.status(200).send({user: userRemoved});
+				}
+			}
+		});
+}
+//Buscar usuario por id
+function getUser(req, res){
+	var userId = req.params.id;
+	User.findById(userId, (err, user) => {
+		if(err){
+			res.status(500).send({message: 'error en la petición'});
+		}else{
+			if(!user){
+				res.status(404).send({message: 'No se a podido encontrar usuario'});
+			}else{
+		res.status(200).send({user});
+	}
+}
+	});
+}
+
+
+//function getUser(req, res){
+	//var userId = req.params.id;
+//	User.findById(userId, function(err, userFind) => {
+	//	if(err){
+//res.status(500).send({message: 'Error en la petición'});
+//}else{
+	//			res.status(404).send({message: 'No existe Usuario'});
+//}else{
+//res.status(200).send({user});
+//}
+//}
+//});
+
+//}
 
 module.exports = {
 	pruebas,
@@ -228,5 +279,7 @@ module.exports = {
 	updateUser,
 	uploadImage,
 	getImageFile,
-	getAdministradores
+	getUsuarios,
+	deleteUser,
+ getUser
 };
